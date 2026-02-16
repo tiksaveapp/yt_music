@@ -1,7 +1,9 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart';
+import 'package:cronet_http/cronet_http.dart';
 import 'package:yt_music/helpers.dart';
 
 import 'modals/yt_config.dart';
@@ -24,17 +26,22 @@ class YTClient {
   YTConfig config;
   static String ytmParams = '';
 
+  static final Client client = _createClient();
   static const ytmDomain = 'music.youtube.com';
   static const httpsYtmDomain = 'https://music.youtube.com';
   static const baseApiEndpoint = '/youtubei/v1/';
-
-  static const userAgent =
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:88.0) Gecko/20100101 Firefox/88.0';
 
   static final ValueNotifier<int> lastConnectionErrorTime = ValueNotifier<int>(
     0,
   );
   ValueNotifier<int> get lastConnectionError => lastConnectionErrorTime;
+
+  static Client _createClient() {
+    if (Platform.isAndroid) {
+      return CronetClient.defaultCronetEngine();
+    }
+    return Client();
+  }
 
   void refreshContext() {
     context = initializeContext();
@@ -48,7 +55,7 @@ class YTClient {
     if (matches != null) {
       final ytcfg = json.decode(matches.group(1).toString());
       return YTConfig(
-        visitorData: ytcfg['VISITOR_DATA'],
+        visitorData: ytcfg['VISITOR_DATA'] ?? ytcfg['EOM_VISITOR_DATA'],
         language: ytcfg['HL'],
         location: ytcfg['GL'],
         apiKey: ytcfg['INNERTUBE_API_KEY'],
@@ -70,12 +77,12 @@ class YTClient {
     String? clientVersion,
   }) {
     config = YTConfig(
-      visitorData: visitorData?? config.visitorData,
-      language: language?? config.language,
-      location: location?? config.location,
-      apiKey: apiKey?? config.apiKey,
-      clientName: clientName?? config.clientName,
-      clientVersion: clientVersion?? config.clientVersion,
+      visitorData: visitorData ?? config.visitorData,
+      language: language ?? config.language,
+      location: location ?? config.location,
+      apiKey: apiKey ?? config.apiKey,
+      clientName: clientName ?? config.clientName,
+      clientVersion: clientVersion ?? config.clientVersion,
     );
   }
 
@@ -85,7 +92,7 @@ class YTClient {
   ) async {
     try {
       final Uri uri = Uri.parse(url);
-      final Response response = await get(uri, headers: headers);
+      final Response response = await client.get(uri, headers: headers);
       return response;
     } catch (e) {
       debugPrint("Exception in YTClient::sendGetRequest: $e");
@@ -100,7 +107,7 @@ class YTClient {
   ) async {
     try {
       final Uri uri = Uri.parse(url);
-      final Response response = await get(uri, headers: headers);
+      final Response response = await client.get(uri, headers: headers);
       return response;
     } catch (e) {
       debugPrint("Exception in YTClient::_sendGetRequest: $e");
@@ -114,7 +121,7 @@ class YTClient {
       final Uri uri = Uri.parse(
         'https://music.youtube.com/api/stats/watchtime?ns=yt&ver=2&c=WEB_REMIX&cmt=${(time.inMilliseconds / 1000)}&docid=$videoId',
       );
-      final Response response = await get(uri, headers: headers);
+      final Response response = await client.get(uri, headers: headers);
       return response;
     } catch (e) {
       debugPrint("Exception in YTClient::addPlayingStats: $e");
@@ -140,7 +147,7 @@ class YTClient {
             ytmParams +
             additionalParams,
       );
-      final response = await post(
+      final response = await client.post(
         uri,
         headers: headers,
         body: jsonEncode(body),

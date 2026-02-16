@@ -103,9 +103,9 @@ Map<String, dynamic> handlePageHeader(Map<String, dynamic> header,
     }
   }
   List? menuItems = nav(header, ['menu', 'menuRenderer', 'items']) ??
-      (nav(header, ['buttons']) as List?)
-              ?.firstWhere((el) => el['menuRenderer'] != null)?['menuRenderer']
-          ?['items'];
+      (nav(header, ['buttons']) as List?)?.firstWhere(
+          (el) => el['menuRenderer'] != null,
+          orElse: () => null)?['menuRenderer']?['items'];
   if (menuItems != null) {
     for (Map run in menuItems) {
       String? iconType =
@@ -181,6 +181,24 @@ List handleContents(List contents, {List? thumbnails}) {
     contentsResult.add(result);
   }
   return contentsResult;
+}
+
+String? handleContinuations(List? continuations) {
+  if (continuations == null) return null;
+  String? result = nav(continuations, [
+        0,
+        'nextContinuationData',
+        'continuation',
+      ]) ??
+      nav(continuations, [
+        0,
+        'nextRadioContinuationData',
+        'continuation',
+      ]);
+  if (result != null) {
+    result = getContinuationString(result);
+  }
+  return result;
 }
 
 Map<String, dynamic> checkRuns(List? runs) {
@@ -337,14 +355,24 @@ Map<String, dynamic> handleMusicPlaylistShelfRenderer(Map item) {
   }
   String? cont =
       nav(item, ['continuations', 0, 'nextContinuationData', 'continuation']);
-  String? continuationparams =
-      cont != null ? getContinuationString(cont) : null;
-  section['continuation'] = continuationparams;
 
   List? contents = nav(item, ['contents']);
   if (contents != null) {
     section['contents'].addAll(handleContents(contents));
+    cont = nav(
+          contents.last,
+          [
+            'continuationItemRenderer',
+            'continuationEndpoint',
+            'continuationCommand',
+            'token'
+          ],
+        ) ??
+        cont;
   }
+  String? continuationparams =
+      cont != null ? getContinuationString(cont) : null;
+  section['continuation'] = continuationparams;
   return section;
 }
 

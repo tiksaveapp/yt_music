@@ -9,7 +9,7 @@ Map<String, String> initializeHeaders(String visitorData) {
     "Origin": "https://music.youtube.com",
     'cookie': 'CONSENT=YES+1',
     'Accept-Language': 'en',
-    'X-Goog-Visitor-Id':visitorData,
+    'X-Goog-Visitor-Id': visitorData,
   };
 
   return h;

@@ -183,20 +183,37 @@ mixin BrowsingMixin on YTClient {
 
     var response =
         await sendRequest(endpoint, body, additionalParams: continuation);
-    String? continuationString = nav(response, [
-      'continuationContents',
-      'musicPlaylistShelfContinuation',
-      'continuations',
-      0,
-      'nextContinuationData',
-      'continuation'
-    ]);
+
     List contents = nav(response, [
           'continuationContents',
           'musicPlaylistShelfContinuation',
           'contents'
         ]) ??
+        nav(response, [
+          'onResponseReceivedActions',
+          0,
+          'appendContinuationItemsAction',
+          'continuationItems',
+        ]) ??
         [];
+    String? continuationString = nav(response, [
+          'continuationContents',
+          'musicPlaylistShelfContinuation',
+          'continuations',
+          0,
+          'nextContinuationData',
+          'continuation'
+        ]) ??
+        nav(
+          contents.last,
+          [
+            'continuationItemRenderer',
+            'continuationEndpoint',
+            'continuationCommand',
+            'token'
+          ],
+        );
+
     return {
       'items': handleContents(contents),
       'continuation': continuationString != null
@@ -260,11 +277,11 @@ mixin BrowsingMixin on YTClient {
     return null;
   }
 
-  Future<List> getNextSongList({
+  Future<Map<String, dynamic>> getNextSongList({
     String? videoId,
     String? playlistId,
+    String continuation = '',
     String? params,
-    int limit = 25,
     bool radio = false,
     bool shuffle = false,
   }) async {
@@ -274,8 +291,8 @@ mixin BrowsingMixin on YTClient {
       body['isAudioOnly'] = true;
       body['tunerSettingValue'] = 'AUTOMIX_SETTING_NORMAL';
 
-      if (videoId == null && playlistId == null) {
-        return [];
+      if (videoId == null && playlistId == null && continuation == "") {
+        return {'contents': [], 'continuation': null};
       }
       if (videoId != null) {
         body['videoId'] = videoId;
@@ -289,68 +306,41 @@ mixin BrowsingMixin on YTClient {
           };
         }
       }
-
-      body['playlistId'] = playlistIdTrimmer(playlistId!);
+      if (playlistId != null) {
+        body['playlistId'] = playlistIdTrimmer(playlistId);
+      }
 
       if (shuffle) body['params'] = 'wAEB8gECKAE%3D';
       if (radio) body['params'] = 'wAEB';
       if (params != null) body['params'] = params;
-      final Map response = await sendRequest('next', body);
-      dynamic contents = nav(response, [
-        'contents',
-        'singleColumnMusicWatchNextResultsRenderer',
-        'tabbedRenderer',
-        'watchNextTabbedResultsRenderer',
-        'tabs',
-        0,
-        'tabRenderer',
-        'content',
-        'musicQueueRenderer',
-        'content',
-        'playlistPanelRenderer',
-        'contents'
-      ]);
-
-      List result = handleContents(contents);
+      final Map response =
+          await sendRequest('next', body, additionalParams: continuation);
+      dynamic playlistPanel = nav(response, [
+            'contents',
+            'singleColumnMusicWatchNextResultsRenderer',
+            'tabbedRenderer',
+            'watchNextTabbedResultsRenderer',
+            'tabs',
+            0,
+            'tabRenderer',
+            'content',
+            'musicQueueRenderer',
+            'content',
+            'playlistPanelRenderer',
+          ]) ??
+          nav(response, [
+            'continuationContents',
+            'playlistPanelContinuation',
+          ]);
+      List contents = nav(playlistPanel, ['contents']);
+      List? continuations = nav(playlistPanel, ['continuations']);
+      Map<String, dynamic> result = {};
+      result['contents'] = handleContents(contents);
+      result['continuation'] = handleContinuations(continuations);
       return result;
     } catch (e) {
-      return [];
+      return {'contents': [], 'continuation': null};
     }
-  }
-
-  Future<List> getPlaylistSongs(String playlistId) async {
-    Map<String, dynamic> body = {
-      "browseId": playlistId.startsWith('VL') ? playlistId : 'VL$playlistId'
-    };
-    var response = await sendRequest('browse', body);
-
-    List contents = nav(response, [
-          'contents',
-          'singleColumnBrowseResultsRenderer',
-          'tabs',
-          0,
-          'tabRenderer',
-          'content',
-          'sectionListRenderer',
-          'contents',
-          0,
-          'musicPlaylistShelfRenderer',
-          'contents'
-        ]) ??
-        nav(response, [
-          'contents',
-          'twoColumnBrowseResultsRenderer',
-          'secondaryContents',
-          'sectionListRenderer',
-          'contents',
-          0,
-          'musicPlaylistShelfRenderer',
-          'contents'
-        ]);
-
-    List result = handleContents(contents);
-
-    return result;
   }
 }
 
