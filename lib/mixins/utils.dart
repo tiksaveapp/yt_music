@@ -410,6 +410,8 @@ Map<String, dynamic> handleMusicResponsiveListItemRenderer(Map item,
     'videoId':
         nav(firstRun, ['navigationEndpoint', 'watchEndpoint', 'videoId']) ??
             nav(item, ['playlistItemData', 'videoId']),
+    'length': nav(item, ['fixedColumns', 0, 'musicResponsiveListItemFixedColumnRenderer', 'text', 'runs', 0, 'text']) ??
+        nav(item, ['lengthText', 'runs', 0, 'text']),
     'type': itemCategory[nav(firstRun, [
           'navigationEndpoint',
           'watchEndpoint',
@@ -532,6 +534,7 @@ Map handlePlaylistPanelVideoRenderer(Map item) {
         nav(item, ['navigationEndpoint', 'browseEndpoint']),
     'videoId': nav(item, ['videoId']) ??
         nav(item, ['navigationEndpoint', 'watchEndpoint', 'videoId']),
+    'length': nav(item, ['lengthText', 'runs', 0, 'text']),
     'playlistId':
         nav(item, ['navigationEndpoint', 'watchEndpoint', 'playlistId']),
     'type': itemCategory[nav(item, [
